@@ -1,65 +1,81 @@
 import streamlit as st
 from openai import OpenAI
+from PyPDF2 import PdfReader
+
 
 # Show title and description.
-st.title("📄 Este es un chat-bot especializado en Nefrología - DevMode")
+st.title("📄 NefroBot - DevMode")
 st.write(
-    "Upload a document below and ask a question about it – GPT will answer! "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
+    "Cargue un documento y GPT-4o-mini responderá! "
 )
 
-# Ask user for their OpenAI API key via `st.text_input`.
-# Alternatively, you can store the API key in `./.streamlit/secrets.toml` and access it
-# via `st.secrets`, see https://docs.streamlit.io/develop/concepts/connections/secrets-management
-openai_api_key = st.secrets["open_ai_key"]
-
+proceed = False
 password = st.text_input("App Password", type="password")
 
-if not openai_api_key:
-    st.info("The app has not OpenAI api key.", icon="🗝️")
-else: 
-    # Create an OpenAI client.
-    client = OpenAI(api_key=openai_api_key)
-
-proceed = False
-
 if not password:
-    st.info("Please add a valid password to continue.", icon="🗝️")
+    st.info("Por favor, ingrese la clave de la aplicación.", icon="🗝️")
 else:
     if password != st.secrets["app_password"]:
-        st.info("The provided password is incorrect.", icon="🗝️")
+        st.info("La clave provista es incorrecta.", icon="🗝️")
     else: 
         proceed = True
 
-# Let the user upload a file via `st.file_uploader`.
-uploaded_file = st.file_uploader(
-    "Upload a document (.txt or .md)", type=("txt", "md")
-)
 
-# Ask the user for a question via `st.text_area`.
-question = st.text_area(
-    "Now ask a question about the document!",
-    placeholder="Can you give me a short summary?",
-    disabled=not uploaded_file,
-)
+if proceed == True:
 
-if uploaded_file and question:
+    # Get the the OpenAI api key from secrets
+    openai_api_key = st.secrets["openai_api_key"]
 
-    # Process the uploaded file and question.
-    document = uploaded_file.read().decode()
-    messages = [
-        {
-            "role": "user",
-            "content": f"Here's a document: {document} \n\n---\n\n {question}",
-        }
-    ]
+    if not openai_api_key:
+        st.info("The app has not OpenAI api key.", icon="🗝️")
+    else: 
+        # Create an OpenAI client.
+        client = OpenAI(api_key=openai_api_key)
 
-    # Generate an answer using the OpenAI API.
-    stream = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=messages,
-        stream=True,
+    # Let the user upload a file via `st.file_uploader`.
+    uploaded_file = st.file_uploader(
+        "Cargue un documento (.pdf)", type=("pdf")
     )
 
-    # Stream the response to the app using `st.write_stream`.
-    st.write_stream(stream)
+    # Ask the user for a question via `st.text_area`.
+    question = st.text_area(
+        "Ahora realice una consulta sobre su documento!",
+        placeholder="Por favor, resuma el contenido",
+        disabled=not uploaded_file,
+    )
+
+    if uploaded_file and question:
+
+        # Process the uploaded file and question.
+        #document = uploaded_file.read().decode()
+
+        pdf_reader = PdfReader(uploaded_file)
+        document_text = ""
+        for page in pdf_reader.pages:
+            document_text += page.extract_text() or ""
+
+
+        messages = [
+            {
+                "role": "system",
+                "content": """Eres un experto en nefrología pediátrica, entrenado para responder preguntas de médicos y estudiantes sobre publicaciones y consensos.
+                IMPORTANTE: Tus respuestas deben estar justificadas, por lo que deberías citar entre paréntesis la página y el fragmento de texto al que haces referencia cuando respondes
+                """
+            },
+
+            {
+                "role": "user",
+                "content": f"Aquí tiene el contenido del documento: {document_text} \n\n---\n\n La pregunta es la siguiente: {question}"
+            }
+        ]
+
+        # Generate an answer using the OpenAI API.
+        stream = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            temperature=0.05,
+            stream=True,
+        )
+
+        # Stream the response to the app using `st.write_stream`.
+        st.write_stream(stream)
