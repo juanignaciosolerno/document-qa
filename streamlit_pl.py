@@ -2,7 +2,8 @@ import streamlit as st
 from twilio.rest import Client
 from twilio.twiml.messaging_response import Body, Message, Redirect, MessagingResponse
 import time
-
+import gspread
+import pandas as pd
 
 # Show title and description.
 st.title("📄 PensamientoLateral - Entrevistador - DevMode")
@@ -22,26 +23,54 @@ else:
     else: 
         proceed = True
 
-
+# Flujo si la Authentication es correcta
 if proceed == True:
     print("Autenticación en la App exitosa.")
 
-    # Twilio Client
+    # Inicializar Twilio Client
     twilio_auth_token = st.secrets['TWILIO_AUTH_TOKEN']
     twilio_account_sid = st.secrets['TWILIO_ACCOUNT_SID']
-
     client = Client(twilio_account_sid, twilio_auth_token)
-    
     if client:
         print("Inicialización de Twilio Client exitosa.")
 
+
+    # Inicializar Gspread Client
+    credentials_dict = {
+        "type": st.secrets["TYPE"],
+        "project_id": st.secrets["PROJECT_ID"],
+        "private_key_id": st.secrets["PRIVATE_KEY_ID"],
+        "private_key": st.secrets["PRIVATE_KEY"],
+        "client_email": st.secrets["CLIENT_EMAIL"],
+        "client_id": st.secrets["CLIENT_ID"],
+        "auth_uri": st.secrets["AUTH_URI"],
+        "token_uri": st.secrets["TOKEN_URI"],
+        "auth_provider_x509_cert_url": st.secrets["AUTH_PROVIDER_X509_CERT_URL"],
+        "client_x509_cert_url": st.secrets["CLIENT_X509_CERT_URL"]
+    }
+
+    gc = gspread.service_account_from_dict(credentials_dict)
+    if gc:
+        print('Inicialización de Gspread Client exitosa.')
+
+
+    # Obtener el worksheet que opera como base de datos
+    key = "1a7NbCtYgD7okcroJmhV07yB3ZqA_FqzGdcvPWBZGg0E"
+    sh = gc.open_by_key(key)
+    worksheet = 1
+    worksheet = sh.get_worksheet(worksheet)
+    if worksheet:
+        print("Google Sheet conectada.")
+
+
+    # Preparar el formulario de entrevista
     st.header("Enviar Entrevista vía WhatsApp")
 
     with st.form("envio_entrevista"):
 
         # Generar una caja de texto para colocar el número de teléfono
         phone_number = st.text_input("Número de Teléfono (con código de país)", placeholder="+5491161966992")
-        #phone_number = '+5491141603674'
+        phone_number = '+5491141603674'
 
         # Generar una caja de texto para iniciar el mensaje
         body = st.text_input("Mensaje de la Entrevista", "Hola, soy Vecinal, tienes unos minutos para responder algunas preguntas?")
@@ -87,6 +116,15 @@ if proceed == True:
 
     # Sección para mostrar resultados
     st.header("Resultados de las Entrevistas Enviadas")
-    
+
+    try:
+        # Leer datos de Google Sheets
+        data = worksheet.get_all_records()
+        df = pd.DataFrame(data)
+        st.dataframe(df)
+    except Exception as e:
+        st.error(f"No se pudo acceder a los datos de entrevistas anteriores. Estado: {str(e)}.")
+        st.info("Aún no se han enviado entrevistas o hubo un error al acceder a los datos.")
+
 
 
