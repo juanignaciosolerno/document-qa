@@ -1,6 +1,7 @@
 import streamlit as st
 from twilio.rest import Client
 from twilio.twiml.messaging_response import Body, Message, Redirect, MessagingResponse
+import time
 
 
 # Show title and description.
@@ -23,7 +24,7 @@ else:
 
 
 if proceed == True:
-    print("Clave exitosa")
+    print("Autenticación en la App exitosa.")
 
     # Twilio Client
     twilio_auth_token = st.secrets['TWILIO_AUTH_TOKEN']
@@ -32,30 +33,60 @@ if proceed == True:
     client = Client(twilio_account_sid, twilio_auth_token)
     
     if client:
-        print("Twilio client exitoso.")
+        print("Inicialización de Twilio Client exitosa.")
 
     st.header("Enviar Entrevista vía WhatsApp")
 
     with st.form("envio_entrevista"):
 
-        phone_number = st.text_input("Número de Teléfono (con código de país)", placeholder="+34123456789")
-        #phone_number = '+5491161966992'
+        # Generar una caja de texto para colocar el número de teléfono
+        phone_number = st.text_input("Número de Teléfono (con código de país)", placeholder="+5491161966992")
         #phone_number = '+5491141603674'
 
-        body = st.text_area("Mensaje de la Entrevista", "Hola, soy Vecinal, tienes unos minutos para responder algunas preguntas?")
+        # Generar una caja de texto para iniciar el mensaje
+        body = st.text_input("Mensaje de la Entrevista", "Hola, soy Vecinal, tienes unos minutos para responder algunas preguntas?")
 
+        # Crear el botón para el submit del form
         submit = st.form_submit_button("Enviar Entrevista")
 
+        # Al presionar el botón de submit
         if submit:
-            message = client.messages.create(
-            from_='whatsapp:+14155238886',
-            body=body,
-            to=f'whatsapp:{phone_number}'
-            )
 
-            print(message.sid)
+            # Verificar que el número de teléfono sea adecuado
+            if not phone_number.startswith("+") or not phone_number[1:].isdigit():
+                st.error("Por favor, ingresa un número de teléfono válido con el código de país.")
+            
+            # Verificar que exista un mensaje a ser enviado
+            elif not body:
+                st.error("El mensaje no puede estar vacío.")
+
+            else:
+
+                message = client.messages.create(
+                from_='whatsapp:+14155238886',
+                body=body,
+                to=f'whatsapp:{phone_number}'
+                )
+
+                st.info("Mensaje enviado. Verificando estado...", icon="⏳")
+
+                time.sleep(5)
+
+                message_status = client.messages(message.sid).fetch().status
+
+                if message_status == "delivered":
+                    st.success("Mensaje recibido por el destinatario, entrevista iniciada.")
+                elif message_status in ["sent", "queued"]:
+                    st.warning(f"Mensaje enviado pero aún no se ha confirmado la entrega. Estado actual: {message_status}.")
+                else:
+                    st.error(f"Mensaje no recibido. Estado: {message_status}.")
 
 
+                print(f"Status del mensaje: {message_status}")
 
-# Stream the response to the app using `st.write_stream`.
-#st.write_stream()
+
+    # Sección para mostrar resultados
+    st.header("Resultados de las Entrevistas Enviadas")
+    
+
+
