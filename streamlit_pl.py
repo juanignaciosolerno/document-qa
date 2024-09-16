@@ -1,6 +1,6 @@
 import streamlit as st
-#from openai import OpenAI
-#from PyPDF2 import PdfReader
+from twilio.rest import Client
+from twilio.twiml.messaging_response import Body, Message, Redirect, MessagingResponse
 
 
 # Show title and description.
@@ -9,6 +9,7 @@ st.write(
     "Aplicación para enviar una entrevista a través de whatsapp y visualizar sus resultados"
 )
 
+# Authentication
 proceed = False
 password = st.text_input("App Password", type="password")
 
@@ -22,60 +23,39 @@ else:
 
 
 if proceed == True:
+    print("Clave exitosa")
 
-    # Get the the OpenAI api key from secrets
-    openai_api_key = st.secrets["openai_api_key"]
+    # Twilio Client
+    twilio_auth_token = st.secrets['TWILIO_AUTH_TOKEN']
+    twilio_account_sid = st.secrets['TWILIO_ACCOUNT_SID']
 
-    if not openai_api_key:
-        st.info("The app has not OpenAI api key.", icon="🗝️")
-    else: 
-        # Create an OpenAI client.
-        client = OpenAI(api_key=openai_api_key)
+    client = Client(twilio_account_sid, twilio_auth_token)
+    
+    if client:
+        print("Twilio client exitoso.")
 
-    # Let the user upload a file via `st.file_uploader`.
-    uploaded_file = st.file_uploader(
-        "Cargue un documento (.pdf)", type=("pdf")
-    )
+    st.header("Enviar Entrevista vía WhatsApp")
 
-    # Ask the user for a question via `st.text_area`.
-    question = st.text_area(
-        "Ahora realice una consulta sobre su documento!",
-        placeholder="Por favor, resuma el contenido",
-        disabled=not uploaded_file,
-    )
+    with st.form("envio_entrevista"):
 
-    if uploaded_file and question:
+        phone_number = st.text_input("Número de Teléfono (con código de país)", placeholder="+34123456789")
+        #phone_number = '+5491161966992'
+        #phone_number = '+5491141603674'
 
-        # Process the uploaded file and question.
-        #document = uploaded_file.read().decode()
+        body = st.text_area("Mensaje de la Entrevista", "Hola, soy Vecinal, tienes unos minutos para responder algunas preguntas?")
 
-        pdf_reader = PdfReader(uploaded_file)
-        document_text = ""
-        for page in pdf_reader.pages:
-            document_text += page.extract_text() or ""
+        submit = st.form_submit_button("Enviar Entrevista")
+
+        if submit:
+            message = client.messages.create(
+            from_='whatsapp:+14155238886',
+            body=body,
+            to=f'whatsapp:{phone_number}'
+            )
+
+            print(message.sid)
 
 
-        messages = [
-            {
-                "role": "system",
-                "content": """Eres un experto en nefrología pediátrica, entrenado para responder preguntas de médicos y estudiantes sobre publicaciones y consensos.
-                IMPORTANTE: Tus respuestas deben estar justificadas, por lo que deberías citar entre paréntesis la página y el fragmento de texto al que haces referencia cuando respondes
-                """
-            },
 
-            {
-                "role": "user",
-                "content": f"Aquí tiene el contenido del documento: {document_text} \n\n---\n\n La pregunta es la siguiente: {question}"
-            }
-        ]
-
-        # Generate an answer using the OpenAI API.
-        stream = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
-            temperature=0.05,
-            stream=True,
-        )
-
-        # Stream the response to the app using `st.write_stream`.
-        st.write_stream(stream)
+# Stream the response to the app using `st.write_stream`.
+#st.write_stream()
