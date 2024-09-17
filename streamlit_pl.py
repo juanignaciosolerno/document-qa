@@ -60,7 +60,15 @@ if proceed == True:
     worksheet = 1
     worksheet = sh.get_worksheet(worksheet)
     if worksheet:
-        print("Google Sheet conectada.")
+        print("Google Sheet de resultados conectada.")
+
+    # Obtener el worksheet que opera como referencia
+    worksheet_2 = 0
+    worksheet_2 = sh.get_worksheet(worksheet_2)
+    if worksheet_2:
+        print("Google Sheet de preguntas de refencia.")
+
+    
 
 
     # Preparar el formulario de entrevista
@@ -70,10 +78,10 @@ if proceed == True:
 
         # Generar una caja de texto para colocar el número de teléfono
         phone_number = st.text_input("Número de Teléfono (con código de país)", placeholder="+5491161966992")
-        #phone_number = '+5491141603674'
+        phone_number = '+5491141603674'
 
         # Generar una caja de texto para iniciar el mensaje
-        body = st.text_input("Mensaje de la Entrevista", "Hola, soy Vecinal, tienes unos minutos para responder algunas preguntas?")
+        body = st.text_input("Mensaje de la Entrevista", "Hola, soy Vecinal, un asistente virtual. \nTe escribo porque estoy evaluando los servicios de la Muni en el barrio. ¿Cómo estás?")
 
         # Crear el botón para el submit del form
         submit = st.form_submit_button("Enviar Entrevista")
@@ -118,10 +126,20 @@ if proceed == True:
     st.header("Resultados de las Entrevistas Enviadas")
 
     try:
+
+        # Leer los datos de referencia del Google Sheets
+        reference = worksheet_2.get_all_records()
+        df2 = pd.DataFrame(reference)
+        df2 = df2.astype(str)
+        st.dataframe(df2)
+
         # Leer datos de Google Sheets
         data = worksheet.get_all_records()
         df = pd.DataFrame(data)
+        df = df.astype(str)
         st.dataframe(df)
+
+
     except Exception as e:
         st.error(f"No se pudo acceder a los datos de entrevistas anteriores. Estado: {str(e)}.")
         st.info("Aún no se han enviado entrevistas o hubo un error al acceder a los datos.")
