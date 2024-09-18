@@ -78,7 +78,7 @@ if proceed == True:
 
         # Generar una caja de texto para colocar el número de teléfono
         phone_number = st.text_input("Número de Teléfono (con código de país)", placeholder="+5491161966992")
-        phone_number = '+5491141603674'
+        #phone_number = '+5491141603674'
 
         # Generar una caja de texto para iniciar el mensaje
         body = st.text_input("Mensaje de la Entrevista", "Hola, soy Vecinal, un asistente virtual. \nTe escribo porque estoy evaluando los servicios de la Muni en el barrio. ¿Cómo estás?")
